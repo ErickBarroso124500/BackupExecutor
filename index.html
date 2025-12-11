@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup Fácil ACS</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+        body{font-family:'Roboto',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);margin:0;padding:20px;color:#333}
+        .container{max-width:800px;margin:40px auto;background:white;border-radius:16px;padding:30px;box-shadow:0 20px 40px rgba(0,0,0,.2);text-align:center}
+        h1{color:#4a148c;margin-bottom:10px}
+        .big-button{background:#4CAF50;color:white;font-size:24px;padding:20px 40px;border:none;border-radius:12px;cursor:pointer;margin:30px 0;box-shadow:0 8px 15px rgba(0,0,0,.2);transition:all .3s}
+        .big-button:hover{transform:scale(1.05);background:#45a049}
+        .big-button:disabled{background:#999;cursor:not-allowed}
+        .log-box{background:#1e1e1e;color:#0f0;border-radius:8px;padding:15px;margin:20px 0;height:420px;overflow-y:auto;text-align:left;font-family:Consolas,monospace;font-size:14px;border:1px solid #444}
+        .progress-container{height:20px;background:#ddd;border-radius:10px;overflow:hidden;margin:20px 0}
+        .progress-bar{height:100%;width:0;background:#4CAF50;transition:width .5s}
+        #status{font-size:18px;font-weight:bold;margin:20px 0;color:#666}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Backup Fácil ACS</h1>
+        <p>Backup automático de todos os sistemas ACS para o Google Drive</p>
+
+        <div id="status">Pronto para iniciar</div>
+
+        <button id="btnBackup" class="big-button">INICIAR BACKUP AGORA</button>
+
+        <div class="progress-container"><div id="progress" class="progress-bar"></div></div>
+
+        <div id="logBox" class="log-box"><pre id="log"></pre></div>
+
+        <button id="btnAbrir" style="display:none;background:#2196F3;padding:12px 24px;color:white;border:none;border-radius:8px;cursor:pointer;margin-top:10px"
+                onclick="window.open('G:\\Meu Drive\\backup')">
+            Abrir pasta de backups no Google Drive
+        </button>
+    </div>
+
+    <script>
+        const btn = document.getElementById('btnBackup');
+        const logEl = document.getElementById('log');
+        const status = document.getElementById('status');
+        const progress = document.getElementById('progress');
+        const btnAbrir = document.getElementById('btnAbrir');
+
+        btn.onclick = async () => {
+            btn.disabled = true;
+            status.textContent = "Iniciando backup...";
+            status.style.color = "#666";
+            logEl.textContent = "";
+            progress.style.width = "3%";
+            btnAbrir.style.display = "none";
+
+            try {
+                const resp = await fetch("BackupExecutor.exe", {method: "POST"});
+                if (!resp.ok) throw new Error("Erro ao iniciar o executável");
+
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = "";
+
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, {stream: true});
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop(); // última linha incompleta
+
+                    lines.forEach(line => {
+                        if (line.trim()) {
+                            logEl.textContent += line + "\n";
+                            logEl.scrollTop = logEl.scrollHeight;
+                        }
+                    });
+
+                    // Progresso estimado simples
+                    const percent = Math.min(98, logEl.textContent.split("\n").length * 2);
+                    progress.style.width = percent + "%";
+                }
+
+                progress.style.width = "100%";
+                status.textContent = "Backup concluído com sucesso!";
+                status.style.color = "#4CAF50";
+                btnAbrir.style.display = "inline-block";
+
+            } catch (e) {
+                logEl.textContent += "\n\nERRO: " + e.message;
+                status.textContent = "Falha ao executar o backup";
+                status.style.color = "red";
+            } finally {
+                btn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
