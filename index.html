@@ -1,99 +1,143 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Backup Fácil ACS</title>
-    <link rel="stylesheet" href="style.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-        body{font-family:'Roboto',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);margin:0;padding:20px;color:#333}
-        .container{max-width:800px;margin:40px auto;background:white;border-radius:16px;padding:30px;box-shadow:0 20px 40px rgba(0,0,0,.2);text-align:center}
-        h1{color:#4a148c;margin-bottom:10px}
-        .big-button{background:#4CAF50;color:white;font-size:24px;padding:20px 40px;border:none;border-radius:12px;cursor:pointer;margin:30px 0;box-shadow:0 8px 15px rgba(0,0,0,.2);transition:all .3s}
-        .big-button:hover{transform:scale(1.05);background:#45a049}
-        .big-button:disabled{background:#999;cursor:not-allowed}
-        .log-box{background:#1e1e1e;color:#0f0;border-radius:8px;padding:15px;margin:20px 0;height:420px;overflow-y:auto;text-align:left;font-family:Consolas,monospace;font-size:14px;border:1px solid #444}
-        .progress-container{height:20px;background:#ddd;border-radius:10px;overflow:hidden;margin:20px 0}
-        .progress-bar{height:100%;width:0;background:#4CAF50;transition:width .5s}
-        #status{font-size:18px;font-weight:bold;margin:20px 0;color:#666}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backup Fácil ACS - Sua Empresa</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e3c72,#2a5298);color:white;text-align:center;padding:40px}
+    .box{background:rgba(255,255,255,0.95);color:#222;border-radius:20px;padding:40px;max-width:800px;margin:auto;box-shadow:0 15px 35px rgba(0,0,0,0.3)}
+    h1{color:#1e3c72;margin:0}
+    button{background:#e63946;color:white;font-size:20px;padding:16px 40px;border:none;border-radius:50px;cursor:pointer;margin:15px}
+    button:hover{background:#d62828}
+    button:disabled{background:#999;cursor:not-allowed}
+    pre{background:#1e1e1e;color:#0f0;padding:20px;border-radius:12px;margin:25px 0;height:500px;overflow:auto;text-align:left;font-family:Consolas,monospace;font-size:14px}
+    .small{font-size:14px;color:#666;margin-top:30px}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Backup Fácil ACS</h1>
-        <p>Backup automático de todos os sistemas ACS para o Google Drive</p>
+<div class="box">
+  <h1>Backup Fácil ACS</h1>
+  <p style="color:#1e3c72;font-size:18px">Backup automático direto no Google Drive</p>
+  
+  <button id="btnAuth">1. Conectar com Google Drive</button>
+  <button id="btnBackup" style="display:none">2. Iniciar Backup Completo</button>
+  
+  <pre id="log">Status: Aguardando conexão com Google Drive...</pre>
+  
+  <div class="small">
+    Versão web 2025 • Não precisa instalar nada • Funciona em qualquer posto
+  </div>
+</div>
 
-        <div id="status">Pronto para iniciar</div>
+<script type="module">
+  const CLIENT_ID = "192507464500-90fk2j4ssuda51ss64vv8ctrhhph75ua.apps.googleusercontent.com";
+  const SCOPES = "https://www.www.googleapis.com/auth/drive.file";
+  let token = null;
 
-        <button id="btnBackup" class="big-button">INICIAR BACKUP AGORA</button>
+  const pastasParaBackup = [
+    "ACS_Sinapse (C:\\ACS_Sinapse\\Servidor\\Util)",
+    "ACS_Sintese (C:\\ACS\\Sintese)",
+    "ACS_NFe (C:\\ACS_NFe)",
+    "ACS_MDFe (C:\\ACS_MDFe)",
+    "ACS_CTe (C:\\ACS_CTe)",
+    "ACS_Backup1 (C:\\ACS_Backup1)"
+  ];
 
-        <div class="progress-container"><div id="progress" class="progress-bar"></div></div>
+  document.getElementById("btnAuth").onclick = () => {
+    google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: (resp) => {
+        if (resp.error) return log("Erro na autenticação: " + resp.error);
+        token = resp.access_token;
+        document.getElementById("btnAuth").style.display = "none";
+        document.getElementById("btnBackup").style.display = "inline-block";
+        log("Conectado com sucesso!\nClique em 'Iniciar Backup Completo' e selecione as pastas na ordem abaixo:\n\n" + pastasParaBackup.map((p,i)=>`${i+1}. ${p}`).join("\n") + "\n\nPronto para começar!");
+      }
+    }).requestAccessToken();
+  };
 
-        <div id="logBox" class="log-box"><pre id="log"></pre></div>
+  document.getElementById("btnBackup").onclick = async () => {
+    if (!token) return;
+    document.getElementById("btnBackup").disabled = true;
+    log("\nIniciando backup completo...\n");
 
-        <button id="btnAbrir" style="display:none;background:#2196F3;padding:12px 24px;color:white;border:none;border-radius:8px;cursor:pointer;margin-top:10px"
-                onclick="window.open('G:\\Meu Drive\\backup')">
-            Abrir pasta de backups no Google Drive
-        </button>
-    </div>
+    for (let i = 0; i < 6; i++) {
+      log(`\n(${i+1}/6) Selecione a pasta: ${pastasParaBackup[i]}\n`);
+      try {
+        const dirHandle = await window.showDirectoryPicker();
+        const pastaNome = pastasParaBackup[i].split(" ")[0];
+        await uploadDirectory(dirHandle, pastaNome);
+        log(`Backup da pasta ${pastaNome} concluído!\n`);
+      } catch (e) {
+        log(`Erro ou cancelado na pasta ${i+1}: ${e.message || "Cancelado pelo usuário"}\n`);
+      }
+    }
 
-    <script>
-        const btn = document.getElementById('btnBackup');
-        const logEl = document.getElementById('log');
-        const status = document.getElementById('status');
-        const progress = document.getElementById('progress');
-        const btnAbrir = document.getElementById('btnAbrir');
+    log("\nBACKUP COMPLETO FINALIZADO COM SUCESSO!\nTodos os arquivos estão no seu Google Drive → 'Backups ACS'");
+    document.getElementById("btnBackup").disabled = false;
+  };
 
-        btn.onclick = async () => {
-            btn.disabled = true;
-            status.textContent = "Iniciando backup...";
-            status.style.color = "#666";
-            logEl.textContent = "";
-            progress.style.width = "3%";
-            btnAbrir.style.display = "none";
+  async function uploadDirectory(dirHandle, pastaRaiz) {
+    const hoje = new Date().toISOString().slice(0,10);
+    let folderId = null;
 
-            try {
-                const resp = await fetch("BackupExecutor.exe", {method: "POST"});
-                if (!resp.ok) throw new Error("Erro ao iniciar o executável");
+    // Cria pasta do dia
+    const resp = await fetch("https://www.googleapis.com/drive/v3/files", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: `Backup_ACS_${hoje}_${pastaRaiz}`, mimeType: "application/vnd.google-apps.folder" })
+    });
+    folderId = (await resp.json()).id;
 
-                const reader = resp.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = "";
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === "file") {
+        const file = await entry.getFile();
+        await uploadFile(file, folderId);
+      } else if (entry.kind === "directory") {
+        await uploadSubdirectory(entry, folderId);
+      }
+    }
+  }
 
-                while (true) {
-                    const {done, value} = await reader.read();
-                    if (done) break;
+  async function uploadSubdirectory(dirHandle, parentId) {
+    const resp = await fetch("https://www.googleapis.com/drive/v3/files", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: dirHandle.name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] })
+    });
+    const folderId = (await resp.json()).id;
 
-                    buffer += decoder.decode(value, {stream: true});
-                    const lines = buffer.split("\n");
-                    buffer = lines.pop(); // última linha incompleta
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === "file") {
+        const file = await entry.getFile();
+        await uploadFile(file, folderId);
+      } else if (entry.kind === "directory") {
+        await uploadSubdirectory(entry, folderId);
+      }
+    }
+  }
 
-                    lines.forEach(line => {
-                        if (line.trim()) {
-                            logEl.textContent += line + "\n";
-                            logEl.scrollTop = logEl.scrollHeight;
-                        }
-                    });
+  async function uploadFile(file, parentId) {
+    const metadata = { name: file.name, parents: [parentId] };
+    const form = new FormData();
+    form.append("metadata", new Blob([JSON.stringify(metadata)], {type: "application/json"}));
+    form.append("file", file);
 
-                    // Progresso estimado simples
-                    const percent = Math.min(98, logEl.textContent.split("\n").length * 2);
-                    progress.style.width = percent + "%";
-                }
+    await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token },
+      body: form
+    });
+    log(`↑ ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`);
+  }
 
-                progress.style.width = "100%";
-                status.textContent = "Backup concluído com sucesso!";
-                status.style.color = "#4CAF50";
-                btnAbrir.style.display = "inline-block";
-
-            } catch (e) {
-                logEl.textContent += "\n\nERRO: " + e.message;
-                status.textContent = "Falha ao executar o backup";
-                status.style.color = "red";
-            } finally {
-                btn.disabled = false;
-            }
-        };
-    </script>
+  function log(txt) {
+    document.getElementById("log").textContent += txt + "\n";
+    document.getElementById("log").scrollTop = document.getElementById("log").scrollHeight;
+  }
+</script>
+<script src="https://accounts.google.com/gsi/client" async></script>
 </body>
 </html>
